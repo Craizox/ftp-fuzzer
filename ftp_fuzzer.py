@@ -22,7 +22,7 @@ class fuzzer():
         self.error = []
         self.buffer = ['', 'A']
         self.counter = 10
-        self.command = [ 'TYPE', 'CWD', 'DELE', 'MDTM', 'PASV', 'MKD', 'NLST', 'PORT', 'PWD', 'RMD', 'RNFR', 'RNTO', 'SITE', 'SIZE', 'ACCT', 'APPE', 'CDUP', 'HELP', 'MODE', 'NOOP', 'REIN', 'STAT', 'STOU', 'STRU', 'SYST', 'ABOR']
+        self.command = [ 'CWD', 'DELE', 'MDTM', 'PASV', 'MKD', 'NLST', 'PORT', 'PWD', 'RMD', 'RNFR', 'RNTO', 'SITE', 'SIZE', 'ACCT', 'APPE', 'CDUP', 'HELP', 'MODE', 'NOOP', 'REIN', 'STAT', 'STOU', 'STRU', 'SYST', 'ABOR', 'TYPE']
         #self.chars = [ "(", ")", "-", "_", "=", "+", "!", "@", "#", "$", "%", "^", "&", "*", "}", "{", ";", ":", ".", "/", "?", "<", ">", "`", "~", "\n" ]
 
     def addValue(self, host, port, user, passwd, length, stopafter, delay):
@@ -43,7 +43,7 @@ class fuzzer():
         self.length = int(length) / 10
         self.stopafter = int(stopafter)
         self.port = 21 if (port == None) else int(port)
-        self.delay = int(delay)
+        self.delay = float(delay)
 
     def createBuffer(self):
         """Create all the buffers for the fuzzer
@@ -52,6 +52,28 @@ class fuzzer():
         while len(self.buffer) < self.length + 2:
             self.buffer.append('A' * self.counter)
             self.counter += 10
+
+    def sendCommand(self, command, buf, log=False):
+        """Function that send a command to the server
+
+        Args:
+            command (str): command to send
+            buf (str): arg to send
+            log (bool, optional): Show the answer of the server if set to True. Defaults to False.
+        """
+        if buf == None:
+            self.socket.send("{}\r\n".format(command).encode())
+        else:
+            self.socket.send("{0} {1}\r\n".format(command, buf).encode())
+        data = self.socket.recv(1024)
+        if log:
+            print("[*] Response From the server : {}".format(data))
+
+    def sendAuthCommand(self):
+        """Wrapper of sendCommand for the authentication
+        """
+        self.sendCommand("USER", self.user)
+        self.sendCommand("PASS", self.passwd)
 
     def fuzzerLoopWithoutCommand(self):
         """Send to the server all the buffer without any command
@@ -62,17 +84,14 @@ class fuzzer():
             try:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.socket.connect((self.host, self.port))
-                data = self.socket.recv(1024)
             except:
                 print(bcolors.FAIL + "Connexion to server {} failed".format(self.host) + bcolors.ENDC)
                 continue            
             
             try:
                 print(bcolors.OKBLUE + "[*] " + bcolors.ENDC + "Host: {0} Fuzzing without command with length ".format(self.host) + str(len(i)))
-                self.socket.send("{}\r\n".format(i).encode())
-                data = self.socket.recv(1024)
-                self.socket.send(b'QUIT\r\n')
-                quit = self.socket.recv(1024)
+                self.sendCommand(i, None)
+                self.sendCommand("QUIT", None)
                 self.socket.close()
             except:
                 print(bcolors.WARNING + "[-] " + bcolors.ENDC + "Crash String : Without command with length {}".format(len(i)))
@@ -92,17 +111,14 @@ class fuzzer():
             try:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.socket.connect((self.host, self.port))
-                data = self.socket.recv(1024)
             except:
                 print(bcolors.FAIL + "Connexion to server {} failed".format(self.host) + bcolors.ENDC)
                 continue            
 
             try:
                 print(bcolors.OKBLUE + "[*] " + bcolors.ENDC + "Host: {0} Fuzzing USER with length ".format(self.host) + str(len(i)))
-                self.socket.send("USER {}\r\n".format(i).encode())
-                data = self.socket.recv(1024)
-                self.socket.send(b'QUIT\r\n')
-                quit = self.socket.recv(1024)
+                self.sendCommand("USER", i)
+                self.sendCommand("QUIT", None)
                 self.socket.close()
             except:
                 print(bcolors.WARNING + "[-] " + bcolors.ENDC + "Crash String : command USER with length {}".format(len(i)))
@@ -121,19 +137,15 @@ class fuzzer():
             try:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.socket.connect((self.host, self.port))
-                data = self.socket.recv(1024)
             except:
                 print(bcolors.FAIL + "Connexion to server {} failed".format(self.host) + bcolors.ENDC)
                 continue
 
             try:            
                 print(bcolors.OKBLUE + "[*] " + bcolors.ENDC + "Host: {0} Fuzzing PASS with length ".format(self.host) + str(len(i)))
-                self.socket.send("USER {}\r\n".format(self.user).encode())
-                data = self.socket.recv(1024)
-                self.socket.send("PASS {}\r\n".format(i).encode())
-                p = self.socket.recv(1024)
-                self.socket.send(b'QUIT\r\n')
-                quit = self.socket.recv(1024)
+                self.sendCommand("USER", self.user)
+                self.sendCommand("PASS", i)
+                self.sendCommand("QUIT", None)
                 self.socket.close()
             except:
                 print(bcolors.WARNING + "[-] " + bcolors.ENDC + "Crash String : command PASS with length {}".format(len(i)))
@@ -159,17 +171,11 @@ class fuzzer():
                     print(bcolors.FAIL + "Connection to server {} failed".format(self.host) + bcolors.ENDC)
                     continue
 
-                try: 
-                    self.socket.send("USER {}\r\n".format(self.user).encode())
-                    u = self.socket.recv(1024)
-                    self.socket.send('PASS {}\r\n'.format(self.passwd).encode())
-                    p = self.socket.recv(1024)
-                    #Enter passive mode 
+                try:
+                    self.sendAuthCommand()
                     print(bcolors.OKBLUE + "[*] " + bcolors.ENDC + "Fuzzing {} with length ".format(command) + str(len(i)))
-                    s = "{0} {1}\r\n".format(command, i)
-                    self.socket.send(s.encode())
-                    data = self.socket.recv(1024)
-                    self.socket.send(b'QUIT\r\n')
+                    self.sendCommand(command, i)
+                    self.sendCommand("QUIT", None)
                     self.socket.close()
                 except:
                     print(bcolors.WARNING + "[-] " + bcolors.ENDC + "Crash String : command {0} with length {1}".format(command, len(i)))
