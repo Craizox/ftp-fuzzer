@@ -1,11 +1,13 @@
 # Simple FTP Fuzzer
 
 ## Feature
-That the most important feature
+These are the most important features
 
 - Pre authentication test
-- Change the buffer to single char, to Cyclic pattern or evilchar buffer
 - Possibility to change the delay between each test 
+
+Features comming soon
+- Change the buffer to single char, to Cyclic pattern or evilchar buffer
 
 ## How To Use it
 
