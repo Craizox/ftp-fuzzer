@@ -12,7 +12,15 @@ class bcolors:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
 
-
+def cyclicPattern(length):
+    buffer = ""
+    while True:
+        for i in range(26):
+            for j in range(26):
+                for k in range(10):
+                    buffer += chr(65 + i) + chr(97 + j) + chr(48 + k)
+                    if len(buffer) >= length:
+                        return buffer[:length]
 
 class fuzzer():
     """Class that contain all the method to use the fuzzer
@@ -25,7 +33,7 @@ class fuzzer():
         self.command = [ 'CWD', 'DELE', 'MDTM', 'PASV', 'MKD', 'NLST', 'PORT', 'PWD', 'RMD', 'RNFR', 'RNTO', 'SITE', 'SIZE', 'ACCT', 'APPE', 'CDUP', 'HELP', 'MODE', 'NOOP', 'REIN', 'STAT', 'STOU', 'STRU', 'SYST', 'ABOR', 'TYPE']
         #self.chars = [ "(", ")", "-", "_", "=", "+", "!", "@", "#", "$", "%", "^", "&", "*", "}", "{", ";", ":", ".", "/", "?", "<", ">", "`", "~", "\n" ]
 
-    def addValue(self, host, port, user, passwd, length, stopafter, delay):
+    def addValue(self, host, port, user, passwd, length, stopafter, delay, cyclic):
         """Add all the argument to the class
 
         Args:
@@ -40,15 +48,27 @@ class fuzzer():
         self.host = host
         self.user = user
         self.passwd = passwd
-        self.length = int(length) / 10
+        self.length = int(length) // 10
         self.stopafter = int(stopafter)
         self.port = 21 if (port == None) else int(port)
         self.delay = float(delay)
+        self.cyclic = cyclic
+
+    def createCyclicBuffer(self):
+        string  = cyclicPattern(self.length * 10)
+        while self.counter <= self.length * 10:
+            self.buffer.append(string[:self.counter])
+            self.counter += 10
 
     def createBuffer(self):
         """Create all the buffers for the fuzzer
             Each time increment of 10 chars the new buffer to until it reach the wanted length
         """
+        print(self.length)
+        if self.cyclic:
+            self.createCyclicBuffer()
+            return
+        
         while len(self.buffer) < self.length + 2:
             self.buffer.append('A' * self.counter)
             self.counter += 10
@@ -218,12 +238,13 @@ parser.add_argument('-l', '--length', help="Buffer length", default=2000)
 parser.add_argument('-s', '--stopafter', help="Stop after x error", default=1)
 #Choose pre auth, by default not active
 parser.add_argument("--pre", help="Pre authentication fuzzing", action="store_true")
+parser.add_argument("-c", "--cyclic", help="Use a cyclic pattern", action="store_true")
 arg = parser.parse_args()
 print(arg)
 
 stopafter = [ int(arg.stopafter) ]
 fuzzer = fuzzer()
-fuzzer.addValue(arg.host, arg.port, arg.user, arg.passwd, arg.length, arg.stopafter, arg.delay)
+fuzzer.addValue(arg.host, arg.port, arg.user, arg.passwd, arg.length, arg.stopafter, arg.delay, arg.cyclic)
 if arg.host == None:
     print(bcolors.WARNING + "Enter Host" + bcolors.ENDC)
     parser.print_help()
