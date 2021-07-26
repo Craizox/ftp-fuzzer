@@ -22,7 +22,7 @@ def cyclicPattern(length):
                     if len(buffer) >= length:
                         return buffer[:length]
 
-class fuzzer():
+class Fuzzer():
     """Class that contain all the method to use the fuzzer
     """
 
@@ -227,46 +227,48 @@ class fuzzer():
         for i in self.error:
             print(bcolors.WARNING + "[-] " + bcolors.ENDC + "Crash String: Command {0} with length {1}".format(i[0],i[1]))
 
+def main():
+    parser = argparse.ArgumentParser(description='FTP Fuzzer', epilog='How to use this Fuzzer')
+    parser.add_argument('-u', '--user', help='Username')
+    parser.add_argument('-d', '--delay', help="Delay between request", default=1)
+    parser.add_argument('--port', help='Server port')
+    parser.add_argument('--passwd', help='Password')
+    parser.add_argument('--host', help='Server Host')
+    parser.add_argument('-l', '--length', help="Buffer length", default=2000)
+    parser.add_argument('-s', '--stopafter', help="Stop after x error", default=1)
+    #Choose pre auth, by default not active
+    parser.add_argument("--pre", help="Pre authentication fuzzing", action="store_true")
+    parser.add_argument("-c", "--cyclic", help="Use a cyclic pattern", action="store_true")
+    arg = parser.parse_args()
+    print(arg)
 
-parser = argparse.ArgumentParser(description='FTP Fuzzer', epilog='How to use this Fuzzer')
-parser.add_argument('-u', '--user', help='Username')
-parser.add_argument('-d', '--delay', help="Delay between request", default=1)
-parser.add_argument('--port', help='Server port')
-parser.add_argument('--passwd', help='Password')
-parser.add_argument('--host', help='Server Host')
-parser.add_argument('-l', '--length', help="Buffer length", default=2000)
-parser.add_argument('-s', '--stopafter', help="Stop after x error", default=1)
-#Choose pre auth, by default not active
-parser.add_argument("--pre", help="Pre authentication fuzzing", action="store_true")
-parser.add_argument("-c", "--cyclic", help="Use a cyclic pattern", action="store_true")
-arg = parser.parse_args()
-print(arg)
+    fuzzer = Fuzzer()
+    fuzzer.addValue(arg.host, arg.port, arg.user, arg.passwd, arg.length, arg.stopafter, arg.delay, arg.cyclic)
+    if arg.host == None:
+        print(bcolors.WARNING + "Enter Host" + bcolors.ENDC)
+        parser.print_help()
+    elif arg.pre:
+        if not fuzzer.testConnection():
+            exit(1)
+        fuzzer.createBuffer()
+        fuzzer.fuzzerLoopWithoutCommand()
+        fuzzer.fuzzerLoopPreAuth()
+        fuzzer.printResult()
 
-stopafter = [ int(arg.stopafter) ]
-fuzzer = fuzzer()
-fuzzer.addValue(arg.host, arg.port, arg.user, arg.passwd, arg.length, arg.stopafter, arg.delay, arg.cyclic)
-if arg.host == None:
-    print(bcolors.WARNING + "Enter Host" + bcolors.ENDC)
-    parser.print_help()
-elif arg.pre:
-    if not fuzzer.testConnection():
-        exit(1)
-    fuzzer.createBuffer()
-    fuzzer.fuzzerLoopWithoutCommand()
-    fuzzer.fuzzerLoopPreAuth()
-    fuzzer.printResult()
+    elif arg.passwd == None:
+        print(bcolors.WARNING + "Enter Password" + bcolors.ENDC)
+        parser.print_help()
+    elif arg.user == None:
+        print(bcolors.WARNING + "Enter Username" + bcolors.ENDC)
+        parser.print_help()
+    else:
+        if not fuzzer.testConnection():
+            exit(1)
+        fuzzer.createBuffer()
+        fuzzer.fuzzerLoopWithoutCommand()
+        fuzzer.fuzzerLoopPreAuth()
+        fuzzer.fuzzerLoopPostAuth()
+        fuzzer.printResult()
 
-elif arg.passwd == None:
-    print(bcolors.WARNING + "Enter Password" + bcolors.ENDC)
-    parser.print_help()
-elif arg.user == None:
-    print(bcolors.WARNING + "Enter Username" + bcolors.ENDC)
-    parser.print_help()
-else:
-    if not fuzzer.testConnection():
-        exit(1)
-    fuzzer.createBuffer()
-    fuzzer.fuzzerLoopWithoutCommand()
-    fuzzer.fuzzerLoopPreAuth()
-    fuzzer.fuzzerLoopPostAuth()
-    fuzzer.printResult()
+if __name__ == "__main__":
+    main()
