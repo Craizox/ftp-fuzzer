@@ -2,7 +2,7 @@ require 'socket'
 require 'ostruct'
 
 class Fuzzer
-    def initialize(host, port, user, passwd, stopafter, delay, length)
+    def initialize(host, port, user, passwd, stopafter, delay, length, cyclic)
         @error = Array.new
         @buffer = Array.new
         @count = 10
@@ -15,9 +15,38 @@ class Fuzzer
         @port = port.nil? ? 21 : port.to_i
         @length = length.nil? ? 2000 : length.to_i
         @socket = nil
+        @cyclic = cyclic
+    end
+
+    def cyclic_pattern()
+        buffer = ""
+        while true
+            for i in 0..25 do
+                for j in 0..25 do
+                    for k in 0..9 do
+                        buffer += (65 + i).chr + (97 + j).chr  + (48 + k).chr
+                        if buffer.length >= @length
+                            return buffer[0..@length - 1]
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    def create_cyclic_buffer()
+        pattern = self.cyclic_pattern
+        while @count <= @length
+            @buffer.push(pattern[0..@count - 1])
+            @count += 10
+        end
     end
 
     def create_buffer()
+        if @cyclic
+            self.create_cyclic_buffer
+            return
+        end
         while @buffer.length < @length / 10
             @buffer.push("A" * @count)
             @count += 10
