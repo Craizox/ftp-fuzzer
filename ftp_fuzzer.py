@@ -64,7 +64,6 @@ class Fuzzer():
         """Create all the buffers for the fuzzer
             Each time increment of 10 chars the new buffer to until it reach the wanted length
         """
-        print(self.length)
         if self.cyclic:
             self.createCyclicBuffer()
             return
